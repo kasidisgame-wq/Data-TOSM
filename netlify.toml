@@ -1,0 +1,4 @@
+[build]
+  publish = "."
+
+# ไม่มีขั้นตอน build พิเศษ (เป็น static HTML ล้วน) — Netlify จะ deploy ไฟล์ตรงๆ

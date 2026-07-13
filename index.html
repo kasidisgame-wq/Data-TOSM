@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CS TOSM 2026 — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<style>
+  :root{
+    --bg: #10141a;
+    --bg-panel: #171d26;
+    --bg-panel-hover: #1d2530;
+    --line: #262f3b;
+    --text: #e7eaee;
+    --text-dim: #8b94a3;
+    --amber: #d9a441;
+    --teal: #4fa9a8;
+    --coral: #c1554a;
+    --green: #5a8f6f;
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{ max-width:1180px; margin:0 auto; padding:32px 24px 64px; }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding-bottom:20px; margin-bottom:22px;
+    border-bottom:1px solid var(--line);
+    flex-wrap:wrap; gap:12px;
+  }
+  .brand h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:22px; font-weight:700; letter-spacing:0.2px; margin:0;
+  }
+  .brand .sub{ color:var(--text-dim); font-size:13px; }
+  .sync-status{
+    display:flex; align-items:center; gap:8px;
+    font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--text-dim);
+    background:var(--bg-panel); border:1px solid var(--line);
+    padding:8px 14px; border-radius:999px;
+  }
+  .pulse-dot{
+    width:8px; height:8px; border-radius:50%; background:var(--teal);
+    box-shadow:0 0 0 0 rgba(79,169,168,0.6);
+    animation: pulse 2s infinite;
+  }
+  .pulse-dot.stale{ background:var(--coral); animation:none; }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(79,169,168,0.55); }
+    70%{ box-shadow:0 0 0 8px rgba(79,169,168,0); }
+    100%{ box-shadow:0 0 0 0 rgba(79,169,168,0); }
+  }
+
+  .tabs{ display:flex; gap:8px; margin-bottom:22px; }
+  .tab-btn{
+    background:var(--bg-panel); border:1px solid var(--line); color:var(--text-dim);
+    padding:10px 18px; border-radius:8px; font-family:'Space Grotesk', sans-serif;
+    font-size:13px; font-weight:600; cursor:pointer; transition:all .15s ease;
+  }
+  .tab-btn.active{ color:var(--bg); background:var(--amber); border-color:var(--amber); }
+  .tab-btn .count{ opacity:0.75; font-weight:500; margin-left:4px; }
+
+  .cards{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+    gap:14px; margin-bottom:22px;
+  }
+  .card{
+    background:var(--bg-panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 18px;
+  }
+  .card .label{ font-size:11px; color:var(--text-dim); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.06em;}
+  .card .value{ font-family:'Space Grotesk', sans-serif; font-size:26px; font-weight:700;}
+  .card .value.amber{ color:var(--amber); }
+  .card .value.teal{ color:var(--teal); }
+  .card .value.green{ color:var(--green); }
+  .card .value.coral{ color:var(--coral); }
+
+  .panel{
+    background:var(--bg-panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px; margin-bottom:22px;
+  }
+  .panel h2{
+    font-family:'Space Grotesk', sans-serif; font-size:15px; margin:0 0 16px;
+    color:var(--text); font-weight:600;
+  }
+  .charts-row{ display:grid; grid-template-columns:1.3fr 1fr; gap:20px; }
+  @media (max-width:800px){ .charts-row{ grid-template-columns:1fr; } }
+  canvas{ max-height:260px; }
+
+  .table-controls{
+    display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center;
+  }
+  input[type="text"]{
+    background:var(--bg); border:1px solid var(--line); color:var(--text);
+    padding:9px 12px; border-radius:8px; font-family:'Inter', sans-serif; font-size:13px;
+    flex:1; min-width:200px;
+  }
+  input[type="text"]:focus{ outline:1px solid var(--amber); }
+  select{
+    background:var(--bg); border:1px solid var(--line); color:var(--text);
+    padding:9px 12px; border-radius:8px; font-size:13px; font-family:'Inter', sans-serif;
+  }
+  .row-count{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--text-dim); white-space:nowrap; }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  thead th{
+    text-align:left; padding:10px 10px; color:var(--text-dim);
+    border-bottom:1px solid var(--line); font-weight:500; cursor:pointer;
+    user-select:none; white-space:nowrap;
+  }
+  thead th:hover{ color:var(--text); }
+  tbody td{ padding:9px 10px; border-bottom:1px solid var(--line); max-width:280px; }
+  tbody tr:hover{ background:var(--bg-panel-hover); }
+  .table-scroll{ overflow-x:auto; }
+
+  .status-pill{
+    display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; white-space:nowrap;
+  }
+  .status-แก้ไขแล้ว{ background:rgba(90,143,111,0.18); color:var(--green); }
+  .status-รับเรื่องแล้ว{ background:rgba(79,169,168,0.18); color:var(--teal); }
+  .status-รอตรวจสอบ, .status-รอดำเนินการ{ background:rgba(217,164,65,0.18); color:var(--amber); }
+  .status-ขอข้อมูลเพิ่ม{ background:rgba(193,85,74,0.18); color:var(--coral); }
+
+  .empty-state{ text-align:center; padding:60px 20px; color:var(--text-dim); }
+  .empty-state h3{ color:var(--text); font-family:'Space Grotesk', sans-serif; }
+  code{
+    background:var(--bg); padding:2px 6px; border-radius:4px; font-family:'IBM Plex Mono', monospace;
+    font-size:12px; color:var(--amber);
+  }
+
+  /* ---- Login gate ---- */
+  #loginGate{
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:24px;
+  }
+  #loginGate h1{
+    font-family:'Space Grotesk', sans-serif; font-size:24px; margin:0 0 8px;
+  }
+  #loginGate p{ color:var(--text-dim); font-size:14px; margin:0 0 24px; max-width:360px; }
+  #loginBtn{
+    background:var(--amber); color:var(--bg); border:none; padding:12px 28px; border-radius:8px;
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:14px; cursor:pointer;
+  }
+  #loginBtn:hover{ opacity:0.9; }
+  #appContent{ display:none; }
+  .user-chip{
+    display:flex; align-items:center; gap:10px;
+    font-size:12.5px; color:var(--text-dim);
+  }
+  .user-chip button{
+    background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-family:'Inter', sans-serif;
+  }
+  .user-chip button:hover{ color:var(--text); border-color:var(--text-dim); }
+</style>
+</head>
+<body>
+
+<!-- หน้าจอล็อกอิน แสดงจนกว่าจะยืนยันตัวตนผ่าน Netlify Identity -->
+<div id="loginGate">
+  <h1>CS TOSM 2026 — Dashboard</h1>
+  <p>เข้าสู่ระบบด้วยอีเมลที่ได้รับเชิญเท่านั้น เพื่อดูข้อมูล CS Dashboard</p>
+  <button id="loginBtn" onclick="window.netlifyIdentity.open()">เข้าสู่ระบบ</button>
+</div>
+
+<div class="wrap" id="appContent">
+
+  <div class="topbar">
+    <div class="brand">
+      <h1>CS TOSM 2026 — Dashboard</h1>
+      <span class="sub">แจ้งปัญหาทั่วไป/บัค/ไอเทมหาย และ ปัญหากิจกรรม</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+      <div class="sync-status">
+        <span class="pulse-dot" id="pulseDot"></span>
+        <span id="syncText">กำลังโหลด...</span>
+      </div>
+      <div class="user-chip">
+        <span id="userEmail"></span>
+        <button onclick="window.netlifyIdentity.logout()">ออกจากระบบ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBug" onclick="switchTab('bug')">แจ้งปัญหาทั่วไป/บัค/ไอเทมหาย <span class="count" id="countBug"></span></button>
+    <button class="tab-btn" id="tabEvent" onclick="switchTab('event')">ปัญหากิจกรรม <span class="count" id="countEvent"></span></button>
+  </div>
+
+  <div class="cards" id="cardsRow"></div>
+
+  <div class="panel" id="chartsPanel" style="display:none;">
+    <h2>ภาพรวม</h2>
+    <div class="charts-row">
+      <div><canvas id="statusChart"></canvas></div>
+      <div><canvas id="serverChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>ตารางข้อมูล</h2>
+    <div class="table-controls">
+      <input type="text" id="searchInput" placeholder="ค้นหา (ชื่อตัวละคร, Family, รายละเอียด, Ticket ฯลฯ)" />
+      <select id="statusFilter"><option value="">สถานะทั้งหมด</option></select>
+      <span class="row-count" id="rowCount"></span>
+    </div>
+    <div class="table-scroll">
+      <table id="dataTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /#appContent -->
+
+<script>
+/* ============================================================
+   Netlify Identity — ล็อกให้ต้องเข้าสู่ระบบก่อนเห็นข้อมูล
+   (ผู้ดูแลต้องตั้งค่า Registration = Invite only ใน Netlify
+   แล้ว "Invite users" เป็นรายอีเมลจาก Netlify dashboard เท่านั้น)
+   ============================================================ */
+function showApp(user){
+  document.getElementById('loginGate').style.display = 'none';
+  document.getElementById('appContent').style.display = 'block';
+  document.getElementById('userEmail').textContent = user && user.email ? user.email : '';
+  loadData();
+}
+
+function showGate(){
+  document.getElementById('loginGate').style.display = 'flex';
+  document.getElementById('appContent').style.display = 'none';
+}
+
+window.netlifyIdentity.on('init', user => {
+  if (user) { showApp(user); } else { showGate(); }
+});
+window.netlifyIdentity.on('login', user => { showApp(user); });
+window.netlifyIdentity.on('logout', () => { showGate(); });
+window.netlifyIdentity.init();
+
+/* ============================================================
+   ที่มาของข้อมูล: ไฟล์ data.json ในโฟลเดอร์เดียวกับเว็บนี้
+   (Apps Script sync ขึ้น GitHub repo เดียวกับที่ Netlify ดึงมา build
+   จึงใช้ path สัมพัทธ์ได้เลย ไม่ต้องพึ่ง CDN ภายนอก)
+   ============================================================ */
+const DATA_URL = "./data/data.json";
+
+// คอลัมน์ที่จะแสดงในตาราง เรียงตามลำดับนี้ (ตรงกับข้อมูลจริงของทั้ง 2 แถบ)
+const DISPLAY_COLUMNS = ['วันที่','EXE ID','ตัวละคร','Family','เซิฟเวอร์','สถานะ','รายละเอียด','Ticket / ลิ้ง','ผู้รับผิดชอบ','โน้ต / อื่นๆ'];
+
+let currentTab = 'bug';
+let dataset = { bug: [], event: [] };
+let sortState = { col: null, dir: 1 };
+let statusChartInstance, serverChartInstance;
+
+async function loadData(){
+  try{
+    const res = await fetch(DATA_URL + "?t=" + Date.now());
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    dataset.bug = (json.bug && json.bug.rows) || [];
+    dataset.event = (json.event && json.event.rows) || [];
+    renderSyncStatus(json.updatedAt, true);
+    document.getElementById('countBug').textContent = `(${dataset.bug.length})`;
+    document.getElementById('countEvent').textContent = `(${dataset.event.length})`;
+    renderTabContent();
+  }catch(err){
+    console.error(err);
+    renderSyncStatus(null, false);
+    renderEmpty(err.message);
+  }
+}
+
+function renderSyncStatus(updatedAt, ok){
+  const dot = document.getElementById('pulseDot');
+  const txt = document.getElementById('syncText');
+  if(!ok){
+    dot.classList.add('stale');
+    txt.textContent = "โหลดข้อมูลไม่สำเร็จ — ตรวจสอบ DATA_URL";
+    return;
+  }
+  const d = new Date(updatedAt);
+  const diffMin = Math.round((Date.now() - d.getTime())/60000);
+  txt.textContent = `อัปเดตล่าสุด ${d.toLocaleString('th-TH')} (${diffMin} นาทีที่แล้ว)`;
+  dot.classList.toggle('stale', diffMin > 60);
+}
+
+function switchTab(tab){
+  currentTab = tab;
+  document.getElementById('tabBug').classList.toggle('active', tab === 'bug');
+  document.getElementById('tabEvent').classList.toggle('active', tab === 'event');
+  document.getElementById('searchInput').value = '';
+  sortState = { col: null, dir: 1 };
+  renderTabContent();
+}
+
+function renderEmpty(msg){
+  document.getElementById('cardsRow').innerHTML = '';
+  document.getElementById('tableBody').innerHTML = '';
+  document.getElementById('tableHead').innerHTML = '';
+  const panel = document.querySelectorAll('.panel')[1];
+  panel.innerHTML = `<div class="empty-state">
+    <h3>ยังไม่มีข้อมูลให้แสดง</h3>
+    <p>${msg ? msg : 'ตรวจสอบว่าตั้งค่า Apps Script sync ถูกต้องแล้ว'}</p>
+    <p>แก้ไขตัวแปร <code>DATA_URL</code> ในไฟล์นี้ให้ชี้ไปที่ repo ของคุณ</p>
+  </div>`;
+}
+
+function renderTabContent(){
+  const rows = dataset[currentTab];
+  if(!rows || rows.length === 0){ renderEmpty(); return; }
+  renderCards(rows);
+  renderCharts(rows);
+  populateStatusFilter(rows);
+  renderTable(rows);
+}
+
+function renderCards(rows){
+  const container = document.getElementById('cardsRow');
+  container.innerHTML = '';
+  container.appendChild(makeCard('รายการทั้งหมด', rows.length, 'amber'));
+
+  const statusCounts = countBy(rows, 'สถานะ');
+  const doneCount = statusCounts['แก้ไขแล้ว'] || 0;
+  const pendingCount = rows.length - doneCount;
+  container.appendChild(makeCard('แก้ไขแล้ว', doneCount, 'green'));
+  container.appendChild(makeCard('รอดำเนินการ/รับเรื่อง', pendingCount, 'coral'));
+
+  const servers = new Set(rows.map(r => r['เซิฟเวอร์']).filter(Boolean));
+  container.appendChild(makeCard('เซิฟเวอร์ที่เจอปัญหา', servers.size, 'teal'));
+}
+
+function makeCard(label, value, colorClass){
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.innerHTML = `<div class="label">${label}</div><div class="value ${colorClass}">${value}</div>`;
+  return div;
+}
+
+function countBy(rows, col){
+  const out = {};
+  rows.forEach(r => {
+    const k = (r[col] || '(ไม่ระบุ)').toString().trim() || '(ไม่ระบุ)';
+    out[k] = (out[k] || 0) + 1;
+  });
+  return out;
+}
+
+function renderCharts(rows){
+  document.getElementById('chartsPanel').style.display = 'block';
+
+  const statusCounts = countBy(rows, 'สถานะ');
+  if(statusChartInstance) statusChartInstance.destroy();
+  statusChartInstance = new Chart(document.getElementById('statusChart'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(statusCounts),
+      datasets: [{ label: 'สถานะ', data: Object.values(statusCounts), backgroundColor: '#d9a441' }]
+    },
+    options: chartOptions('จำนวนตามสถานะ')
+  });
+
+  const serverCounts = countBy(rows, 'เซิฟเวอร์');
+  const sortedServers = Object.entries(serverCounts).sort((a,b) => b[1]-a[1]).slice(0,8);
+  if(serverChartInstance) serverChartInstance.destroy();
+  serverChartInstance = new Chart(document.getElementById('serverChart'), {
+    type: 'doughnut',
+    data: {
+      labels: sortedServers.map(s => s[0]),
+      datasets: [{ data: sortedServers.map(s => s[1]), backgroundColor: ['#d9a441','#4fa9a8','#c1554a','#7c8a9e','#8b6dab','#5a8f6f','#c98a3f','#4d7ea8'] }]
+    },
+    options: { plugins:{ legend:{ position:'right', labels:{ color:'#8b94a3', font:{ family:'Inter', size:11 } } } } }
+  });
+}
+
+function chartOptions(title){
+  return {
+    plugins:{ legend:{ display:false }, title:{ display:true, text: title, color:'#e7eaee', font:{family:'Space Grotesk', size:13} } },
+    scales:{
+      x:{ ticks:{ color:'#8b94a3', font:{size:10}, autoSkip:false, maxRotation:30 }, grid:{ color:'#262f3b' } },
+      y:{ ticks:{ color:'#8b94a3', font:{size:11} }, grid:{ color:'#262f3b' } }
+    }
+  };
+}
+
+function populateStatusFilter(rows){
+  const select = document.getElementById('statusFilter');
+  const statuses = [...new Set(rows.map(r => r['สถานะ']).filter(Boolean))];
+  select.innerHTML = '<option value="">สถานะทั้งหมด</option>' +
+    statuses.map(s => `<option value="${s}">${s}</option>`).join('');
+  select.onchange = () => drawRows(getFiltered());
+}
+
+function getActiveColumns(rows){
+  const present = new Set();
+  rows.forEach(r => Object.keys(r).forEach(k => present.add(k)));
+  return DISPLAY_COLUMNS.filter(c => present.has(c));
+}
+
+function renderTable(rows){
+  const cols = getActiveColumns(rows);
+  const head = document.getElementById('tableHead');
+  head.innerHTML = '<tr>' + cols.map(c => `<th data-col="${c}">${c}</th>`).join('') + '</tr>';
+
+  head.querySelectorAll('th').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      sortState.dir = (sortState.col === col) ? -sortState.dir : 1;
+      sortState.col = col;
+      drawRows(getFiltered());
+    });
+  });
+
+  drawRows(rows);
+  document.getElementById('searchInput').oninput = () => drawRows(getFiltered());
+}
+
+function getFiltered(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const statusFilter = document.getElementById('statusFilter').value;
+  let rows = dataset[currentTab];
+
+  if(statusFilter){
+    rows = rows.filter(r => r['สถานะ'] === statusFilter);
+  }
+  if(q){
+    rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q)));
+  }
+  if(sortState.col){
+    rows = [...rows].sort((a,b) => {
+      const av = a[sortState.col], bv = b[sortState.col];
+      return String(av).localeCompare(String(bv), 'th') * sortState.dir;
+    });
+  }
+  return rows;
+}
+
+function drawRows(rows){
+  const cols = getActiveColumns(dataset[currentTab]);
+  const body = document.getElementById('tableBody');
+  body.innerHTML = rows.slice(0, 500).map(r =>
+    '<tr>' + cols.map(c => {
+      if(c === 'สถานะ' && r[c]){
+        const cls = 'status-' + String(r[c]).replace(/\s+/g,'');
+        return `<td><span class="status-pill ${cls}">${r[c]}</span></td>`;
+      }
+      return `<td>${r[c] ?? ''}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+  document.getElementById('rowCount').textContent = `แสดง ${Math.min(rows.length,500)} / ${rows.length} แถว`;
+}
+
+setInterval(() => {
+  // รีเฟรชเฉพาะตอนล็อกอินอยู่แล้วเท่านั้น
+  if(document.getElementById('appContent').style.display === 'block') loadData();
+}, 60000); // รีเฟรชข้อมูลทุก 1 นาที
+</script>
+</body>
+</html>
