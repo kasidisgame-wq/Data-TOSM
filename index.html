@@ -226,6 +226,23 @@
 
 <script>
 /* ============================================================
+   ที่มาของข้อมูล: ไฟล์ data.json ในโฟลเดอร์เดียวกับเว็บนี้
+   (Apps Script sync ขึ้น GitHub repo เดียวกับที่ Netlify ดึงมา build
+   จึงใช้ path สัมพัทธ์ได้เลย ไม่ต้องพึ่ง CDN ภายนอก)
+   ต้องประกาศไว้บนสุดของสคริปต์ ก่อนส่วน Netlify Identity เสมอ
+   เพราะ Identity อาจเรียก loadData() ทันทีถ้าผู้ใช้ล็อกอินค้างไว้อยู่แล้ว
+   ============================================================ */
+const DATA_URL = "./data/data.json";
+
+// คอลัมน์ที่จะแสดงในตาราง เรียงตามลำดับนี้ (ตรงกับข้อมูลจริงของทั้ง 2 แถบ)
+const DISPLAY_COLUMNS = ['วันที่','EXE ID','ตัวละคร','Family','เซิฟเวอร์','สถานะ','รายละเอียด','Ticket / ลิ้ง','ผู้รับผิดชอบ','โน้ต / อื่นๆ'];
+
+let currentTab = 'bug';
+let dataset = { bug: [], event: [] };
+let sortState = { col: null, dir: 1 };
+let statusChartInstance, serverChartInstance;
+
+/* ============================================================
    Netlify Identity — ล็อกให้ต้องเข้าสู่ระบบก่อนเห็นข้อมูล
    (ผู้ดูแลต้องตั้งค่า Registration = Invite only ใน Netlify
    แล้ว "Invite users" เป็นรายอีเมลจาก Netlify dashboard เท่านั้น)
@@ -248,21 +265,6 @@ window.netlifyIdentity.on('init', user => {
 window.netlifyIdentity.on('login', user => { showApp(user); });
 window.netlifyIdentity.on('logout', () => { showGate(); });
 window.netlifyIdentity.init();
-
-/* ============================================================
-   ที่มาของข้อมูล: ไฟล์ data.json ในโฟลเดอร์เดียวกับเว็บนี้
-   (Apps Script sync ขึ้น GitHub repo เดียวกับที่ Netlify ดึงมา build
-   จึงใช้ path สัมพัทธ์ได้เลย ไม่ต้องพึ่ง CDN ภายนอก)
-   ============================================================ */
-const DATA_URL = "./data/data.json";
-
-// คอลัมน์ที่จะแสดงในตาราง เรียงตามลำดับนี้ (ตรงกับข้อมูลจริงของทั้ง 2 แถบ)
-const DISPLAY_COLUMNS = ['วันที่','EXE ID','ตัวละคร','Family','เซิฟเวอร์','สถานะ','รายละเอียด','Ticket / ลิ้ง','ผู้รับผิดชอบ','โน้ต / อื่นๆ'];
-
-let currentTab = 'bug';
-let dataset = { bug: [], event: [] };
-let sortState = { col: null, dir: 1 };
-let statusChartInstance, serverChartInstance;
 
 async function loadData(){
   try{
